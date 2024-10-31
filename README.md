@@ -1,12 +1,13 @@
 # AI Audio Transcription & Translation
 
-A web application that transcribes audio files and translates non-English content to English using Groq's API.
+A web application that transcribes audio files and translates non-English content to English using OpenAI's Whisper and Groq's API.
 
 ## Features
 
 - Audio file upload and processing
+- Live audio recording with microphone
 - Transcription using Whisper Large v3 model
-- Automatic translation of non-English segments to English
+- Automatic translation of non-English segments to English using Mixtral-8x7b
 - Timestamp-based segmentation of audio content
 - Download transcription and translation results as text file
 - Real-time loading states and error handling
@@ -18,7 +19,10 @@ A web application that transcribes audio files and translates non-English conten
   - Shadcn/ui
   - Lucide React icons
   - Tailwind CSS
-- **API Integration**: OpenAI/Groq API
+  - Geist Font
+- **API Integration**: 
+  - OpenAI Whisper API (transcription)
+  - Groq API (translation)
 - **Language**: TypeScript
 
 ## Getting Started
@@ -43,7 +47,9 @@ npm run dev
 
 ## Usage
 
-1. Click the upload area to select an audio file
+1. Choose your input method:
+   - Click the upload icon to select an audio file
+   - Click the microphone icon to record audio directly
 2. Wait for the transcription and translation process
 3. View the results with timestamps, original text, and translations
 4. Download the complete results as a text file
@@ -53,8 +59,9 @@ npm run dev
 ### POST /api/transcribe
 Handles audio file transcription and translation:
 - Accepts audio files via FormData
+- Transcribes audio using Whisper Large v3
+- Translates non-English content to English using Mixtral-8x7b
 - Returns segmented transcriptions with timestamps
-- Automatically translates non-English content to English
 
 ## License
 
