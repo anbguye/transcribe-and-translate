@@ -14,7 +14,8 @@ import { Loader2, Download } from "lucide-react";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [transcription, setTranscription] = useState<string>("");
+  const [originalText, setOriginalText] = useState<string>("");
+  const [translatedText, setTranslatedText] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -52,7 +53,8 @@ export default function Home() {
         throw new Error(data.error);
       }
 
-      setTranscription(data.text);
+      setOriginalText(data.originalText);
+      setTranslatedText(data.translatedText);
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -62,11 +64,12 @@ export default function Home() {
   };
 
   const handleDownload = () => {
-    const blob = new Blob([transcription], { type: "text/plain" });
+    const content = `Original Text:\n${originalText}\n\nEnglish Translation:\n${translatedText}`;
+    const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "transcription.txt";
+    a.download = "transcription-and-translation.txt";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -78,7 +81,7 @@ export default function Home() {
       <Card className="w-full max-w-4xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            Audio Transcription
+            Audio Transcription & Translation
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -102,7 +105,7 @@ export default function Home() {
                       Processing...
                     </>
                   ) : (
-                    "Transcribe Audio"
+                    "Transcribe & Translate"
                   )}
                 </Button>
               </form>
@@ -111,14 +114,27 @@ export default function Home() {
               )}
             </div>
             <div className="flex-1 mt-4 md:mt-0">
-              <div className="bg-white p-4 rounded-lg shadow min-h-[200px] max-h-[400px] overflow-y-auto">
-                {transcription ? (
-                  <p className="text-sm">{transcription}</p>
-                ) : (
-                  <p className="text-sm text-gray-500 italic">
-                    Transcription will appear here...
-                  </p>
-                )}
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg shadow min-h-[100px] max-h-[200px] overflow-y-auto">
+                  <h3 className="font-semibold mb-2">Original Transcription:</h3>
+                  {originalText ? (
+                    <p className="text-sm">{originalText}</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      Original transcription will appear here...
+                    </p>
+                  )}
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow min-h-[100px] max-h-[200px] overflow-y-auto">
+                  <h3 className="font-semibold mb-2">English Translation:</h3>
+                  {translatedText ? (
+                    <p className="text-sm">{translatedText}</p>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">
+                      English translation will appear here...
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -126,12 +142,12 @@ export default function Home() {
         <CardFooter className="justify-end">
           <Button
             onClick={handleDownload}
-            disabled={!transcription}
+            disabled={!originalText || !translatedText}
             variant="outline"
             className="mt-4"
           >
             <Download className="mr-2 h-4 w-4" />
-            Download Transcription
+            Download Results
           </Button>
         </CardFooter>
       </Card>

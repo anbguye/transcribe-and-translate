@@ -36,23 +36,44 @@ export async function POST(request: Request) {
     // Create a Blob from the buffer
     const blob = new Blob([buffer], { type: file.type });
 
-    console.log('Sending request to Groq API');
+    console.log('Sending transcription request to Whisper');
     
     const transcription = await openai.audio.transcriptions.create({
       file: new File([blob], 'audio.mp3', { type: file.type }),
       model: 'whisper-large-v3',
     });
 
-    console.log('Received response from Groq API:', transcription);
+    console.log('Received transcription:', transcription.text);
+
+    // Translate the transcription if it's not in English
+    console.log('Sending translation request to Groq');
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Dont mention anything about the language of the text. Just return the translated text."
+        },
+        {
+          role: "user",
+          content: transcription.text
+        }
+      ],
+      model: "mixtral-8x7b-32768",
+      temperature: 0.3,
+    });
+
+    const translatedText = completion.choices[0].message.content;
+    console.log('Received translation:', translatedText);
 
     return NextResponse.json({ 
-      text: transcription.text 
+      originalText: transcription.text,
+      translatedText: translatedText
     });
 
   } catch (error) {
-    console.error('Error in transcription:', error);
+    console.error('Error in transcription/translation:', error);
     return NextResponse.json(
-      { error: 'Error processing transcription' },
+      { error: 'Error processing transcription/translation' },
       { status: 500 }
     );
   }
