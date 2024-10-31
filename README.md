@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Audio Transcription & Translation
+
+A web application that transcribes audio files and translates non-English content to English using Groq's API.
+
+## Features
+
+- Audio file upload and processing
+- Transcription using Whisper Large v3 model
+- Automatic translation of non-English segments to English
+- Timestamp-based segmentation of audio content
+- Download transcription and translation results as text file
+- Real-time loading states and error handling
+
+## Tech Stack
+
+- **Framework**: Next.js 15
+- **UI Components**: 
+  - Shadcn/ui
+  - Lucide React icons
+  - Tailwind CSS
+- **API Integration**: OpenAI/Groq API
+- **Language**: TypeScript
 
 ## Getting Started
 
-First, run the development server:
-
+1. Clone the repository
+2. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Set up environment variables:
+```bash
+GROQ_API_KEY=your_api_key_here
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Learn More
+## Usage
 
-To learn more about Next.js, take a look at the following resources:
+1. Click the upload area to select an audio file
+2. Wait for the transcription and translation process
+3. View the results with timestamps, original text, and translations
+4. Download the complete results as a text file
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Endpoints
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### POST /api/transcribe
+Handles audio file transcription and translation:
+- Accepts audio files via FormData
+- Returns segmented transcriptions with timestamps
+- Automatically translates non-English content to English
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
