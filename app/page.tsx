@@ -1,16 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Loader2, Download, Upload } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 
 interface Segment {
   start: number;
@@ -30,13 +21,11 @@ export default function Home() {
     if (selectedFile) {
       setFile(selectedFile);
       setError("");
+      handleSubmit(selectedFile);
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!file) return;
-
+  const handleSubmit = async (file: File) => {
     try {
       setIsLoading(true);
       setError("");
@@ -71,15 +60,18 @@ export default function Home() {
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   const handleDownload = () => {
-    const content = segments.map(segment => (
-      `[${formatTime(segment.start)} - ${formatTime(segment.end)}]\n` +
-      `Original: ${segment.originalText}\n` +
-      `English: ${segment.translatedText}\n\n`
-    )).join('');
+    const content = segments
+      .map(
+        (segment) =>
+          `[${formatTime(segment.start)} - ${formatTime(segment.end)}]\n` +
+          `Original: ${segment.originalText}\n` +
+          `English: ${segment.translatedText}\n\n`
+      )
+      .join("");
 
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -93,121 +85,53 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-4xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
-            Audio Transcription & Translation
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="p-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-grow">
-                      <Input
-                        type="file"
-                        accept="audio/*"
-                        onChange={handleFileChange}
-                        className="file:mr-4 file:px-4 file:py-1 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={!file || isLoading}
-                      className="min-w-[120px]"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Submit
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-                {error && (
-                  <p className="text-destructive mt-2 text-sm">{error}</p>
-                )}
-              </CardContent>
-            </Card>
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 space-y-8">
+      <h1 className="text-2xl font-bold">Audio Transcription & Translation</h1>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Original Transcription
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted p-4 rounded-md min-h-[150px] max-h-[300px] overflow-y-auto">
-                    {segments.length > 0 ? (
-                      <div className="space-y-4">
-                        {segments.map((segment, index) => (
-                          <div key={index} className="border-b border-border pb-2 last:border-0">
-                            <div className="text-xs text-muted-foreground mb-1">
-                              [{formatTime(segment.start)} - {formatTime(segment.end)}]
-                            </div>
-                            <p className="text-sm">{segment.originalText}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        Original transcription will appear here...
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="w-full max-w-2xl">
+        <label className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-colors">
+          <input
+            type="file"
+            accept="audio/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          {isLoading ? (
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          ) : (
+            <span className="text-gray-500">Click to upload audio file</span>
+          )}
+        </label>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">English Translation</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted p-4 rounded-md min-h-[150px] max-h-[300px] overflow-y-auto">
-                    {segments.length > 0 ? (
-                      <div className="space-y-4">
-                        {segments.map((segment, index) => (
-                          <div key={index} className="border-b border-border pb-2 last:border-0">
-                            <div className="text-xs text-muted-foreground mb-1">
-                              [{formatTime(segment.start)} - {formatTime(segment.end)}]
-                            </div>
-                            <p className="text-sm">{segment.translatedText}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        English translation will appear here...
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+        {error && (
+          <p className="text-red-500 mt-2 text-sm text-center">{error}</p>
+        )}
+      </div>
+
+      {segments.length > 0 && (
+        <div className="w-full max-w-2xl space-y-4">
+          {segments.map((segment, index) => (
+            <div
+              key={index}
+              className="border-b border-gray-200 pb-4 last:border-0"
+            >
+              <div className="text-xs text-gray-400 mb-1">
+                [{formatTime(segment.start)} - {formatTime(segment.end)}]
+              </div>
+              <p className="text-sm mb-2">{segment.originalText}</p>
+              <p className="text-sm text-gray-600">{segment.translatedText}</p>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button
+          ))}
+
+          <button
             onClick={handleDownload}
-            disabled={segments.length === 0}
-            variant="outline"
-            className="mt-4"
+            className="flex items-center justify-center w-full py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
             <Download className="mr-2 h-4 w-4" />
             Download Results
-          </Button>
-        </CardFooter>
-      </Card>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
