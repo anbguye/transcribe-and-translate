@@ -53,9 +53,9 @@ export async function POST(request: Request) {
         const completion = await openai.chat.completions.create({
           messages: [
             {
-              role: "system",
+              role: "user",
               content:
-                "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text.",
+                "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text. ",
             },
             {
               role: "user",
