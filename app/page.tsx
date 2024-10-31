@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Loader2, Download, Mic, Upload } from "lucide-react";
+import { Loader2, Download, Upload } from "lucide-react";
 import AudioRecorder from "./components/AudioRecorder";
 
 interface Segment {
