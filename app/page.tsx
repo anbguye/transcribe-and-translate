@@ -10,12 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2, Download } from "lucide-react";
+import { Loader2, Download, Upload } from "lucide-react";
+
+interface Segment {
+  start: number;
+  end: number;
+  originalText: string;
+  translatedText: string;
+}
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-  const [originalText, setOriginalText] = useState<string>("");
-  const [translatedText, setTranslatedText] = useState<string>("");
+  const [segments, setSegments] = useState<Segment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
@@ -36,10 +42,10 @@ export default function Home() {
       setError("");
 
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append("file", file);
 
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
+      const response = await fetch("/api/transcribe", {
+        method: "POST",
         body: formData,
       });
 
@@ -48,23 +54,33 @@ export default function Home() {
       }
 
       const data = await response.json();
-      
+
       if (data.error) {
         throw new Error(data.error);
       }
 
-      setOriginalText(data.originalText);
-      setTranslatedText(data.translatedText);
+      setSegments(data.segments);
     } catch (err) {
-      console.error('Error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error("Error:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const formatTime = (seconds: number): string => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const handleDownload = () => {
-    const content = `Original Text:\n${originalText}\n\nEnglish Translation:\n${translatedText}`;
+    const content = segments.map(segment => (
+      `[${formatTime(segment.start)} - ${formatTime(segment.end)}]\n` +
+      `Original: ${segment.originalText}\n` +
+      `English: ${segment.translatedText}\n\n`
+    )).join('');
+
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -85,64 +101,105 @@ export default function Home() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <Input
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleFileChange}
-                  className="file:mr-4 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 p-1 border-2"
-                />
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={!file || isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Transcribe & Translate"
-                  )}
-                </Button>
-              </form>
-              {error && (
-                <p className="text-red-500 mt-2 text-sm">{error}</p>
-              )}
-            </div>
-            <div className="flex-1 mt-4 md:mt-0">
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg shadow min-h-[100px] max-h-[200px] overflow-y-auto">
-                  <h3 className="font-semibold mb-2">Original Transcription:</h3>
-                  {originalText ? (
-                    <p className="text-sm">{originalText}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      Original transcription will appear here...
-                    </p>
-                  )}
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow min-h-[100px] max-h-[200px] overflow-y-auto">
-                  <h3 className="font-semibold mb-2">English Translation:</h3>
-                  {translatedText ? (
-                    <p className="text-sm">{translatedText}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500 italic">
-                      English translation will appear here...
-                    </p>
-                  )}
-                </div>
-              </div>
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-grow">
+                      <Input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileChange}
+                        className="file:mr-4 file:px-4 file:py-1 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 cursor-pointer"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={!file || isLoading}
+                      className="min-w-[120px]"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Submit
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+                {error && (
+                  <p className="text-destructive mt-2 text-sm">{error}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Original Transcription
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted p-4 rounded-md min-h-[150px] max-h-[300px] overflow-y-auto">
+                    {segments.length > 0 ? (
+                      <div className="space-y-4">
+                        {segments.map((segment, index) => (
+                          <div key={index} className="border-b border-border pb-2 last:border-0">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              [{formatTime(segment.start)} - {formatTime(segment.end)}]
+                            </div>
+                            <p className="text-sm">{segment.originalText}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        Original transcription will appear here...
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">English Translation</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-muted p-4 rounded-md min-h-[150px] max-h-[300px] overflow-y-auto">
+                    {segments.length > 0 ? (
+                      <div className="space-y-4">
+                        {segments.map((segment, index) => (
+                          <div key={index} className="border-b border-border pb-2 last:border-0">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              [{formatTime(segment.start)} - {formatTime(segment.end)}]
+                            </div>
+                            <p className="text-sm">{segment.translatedText}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        English translation will appear here...
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </CardContent>
         <CardFooter className="justify-end">
           <Button
             onClick={handleDownload}
-            disabled={!originalText || !translatedText}
+            disabled={segments.length === 0}
             variant="outline"
             className="mt-4"
           >
