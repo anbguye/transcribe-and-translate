@@ -16,11 +16,13 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [transcription, setTranscription] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>("");
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
+      setError("");
     }
   };
 
@@ -28,13 +30,35 @@ export default function Home() {
     event.preventDefault();
     if (!file) return;
 
-    setIsLoading(true);
-    // Simulating transcription and translation process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setTranscription(
-      "This is a simulated transcription and translation of the uploaded audio file. In a real application, this would be the actual transcribed and translated text from the audio file."
-    );
-    setIsLoading(false);
+    try {
+      setIsLoading(true);
+      setError("");
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setTranscription(data.text);
+    } catch (err) {
+      console.error('Error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDownload = () => {
@@ -78,10 +102,13 @@ export default function Home() {
                       Processing...
                     </>
                   ) : (
-                    "Transcribe and Translate"
+                    "Transcribe Audio"
                   )}
                 </Button>
               </form>
+              {error && (
+                <p className="text-red-500 mt-2 text-sm">{error}</p>
+              )}
             </div>
             <div className="flex-1 mt-4 md:mt-0">
               <div className="bg-white p-4 rounded-lg shadow min-h-[200px] max-h-[400px] overflow-y-auto">
