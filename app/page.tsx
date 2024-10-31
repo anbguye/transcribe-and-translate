@@ -11,7 +11,6 @@ interface Segment {
 }
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -19,7 +18,6 @@ export default function Home() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      setFile(selectedFile);
       setError("");
       handleSubmit(selectedFile);
     }
