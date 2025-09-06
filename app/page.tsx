@@ -33,6 +33,7 @@ export default function Home() {
   };
 
   const handleRecordingComplete = async (audioFile: File) => {
+    console.log('handleRecordingComplete called - setting isRecording to false');
     setIsRecording(false);
     handleSubmit(audioFile);
   };
@@ -118,30 +119,34 @@ export default function Home() {
       </h1>
 
       <div className="w-full max-w-md">
-        <div className="flex justify-center space-x-6 mb-8">
-          <div className="flex flex-col items-center">
-            <label className="w-16 h-16 flex items-center justify-center border border-gray-300 rounded-full cursor-pointer hover:bg-gray-50 transition-colors mb-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="audio/*"
-                onChange={handleFileChange}
-                className="hidden"
-                disabled={isLoading || isRecording}
-              />
-              <Upload className="w-8 h-8 text-gray-500" />
-            </label>
-            <span className="text-sm text-gray-600">Upload File</span>
+        <div className="flex justify-center items-end space-x-8 mb-8">
+          {/* Upload Section */}
+          <div className="flex flex-col items-center min-h-[5rem]">
+            <div className="w-16 h-16 mb-2">
+              <label className="w-full h-full flex items-center justify-center border border-gray-300 rounded-full cursor-pointer hover:bg-gray-50 transition-colors">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  disabled={isLoading || isRecording}
+                />
+                <Upload className="w-8 h-8 text-gray-500" />
+              </label>
+            </div>
+            <span className="text-sm text-gray-600 text-center">Upload Audio</span>
           </div>
 
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16">
+          {/* Record Section */}
+          <div className="flex flex-col items-center min-h-[5rem]">
+            <div className="w-16 h-16 mb-2">
               <AudioRecorder
                 onRecordingComplete={handleRecordingComplete}
                 isProcessing={isLoading}
               />
             </div>
-            <span className="text-sm text-gray-600">Record Audio</span>
+            <span className="text-sm text-gray-600 text-center">Record Audio</span>
           </div>
         </div>
 

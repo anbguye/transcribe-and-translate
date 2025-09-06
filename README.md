@@ -1,60 +1,105 @@
-# AI Audio Transcription & Translation
+# 🎙️ AI Audio Transcription & Translation
 
-A secure web application that transcribes audio files and translates non-English content to English using OpenAI's Whisper and Groq's API with built-in rate limiting protection.
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=flat&logo=openai&logoColor=white)](https://openai.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-## Features
+A modern, secure web application that transcribes audio files and translates non-English content to English using cutting-edge AI models with intelligent features and built-in protection.
 
-- Audio file upload and processing
-- Live audio recording with microphone
-- Transcription using Whisper Large v3 model
-- Automatic translation of non-English content to English using Llama 3.1 8B Instant
-- Rate limiting (10 requests per minute per IP) to prevent abuse
-- Timestamp-based segmentation of audio content
-- Download transcription and translation results as text file
-- Real-time loading states and comprehensive error handling
-- Secure file handling with automatic cleanup
+## ✨ Features
 
-## Tech Stack
+### 🎵 Audio Processing
+- **File Upload**: Support for various audio formats
+- **Live Recording**: Record directly from your microphone
+- **Intelligent Auto-Stop**: Automatically stops recording after 2 seconds of silence
+- **Smart Detection**: Uses Web Audio API for real-time silence detection
 
-- **Framework**: Next.js 15
-- **UI Components**: 
-  - Shadcn/ui
-  - Lucide React icons
-  - Tailwind CSS
-  - Geist Font
-- **API Integration**: 
+### 🤖 AI-Powered Transcription & Translation
+- **Whisper Large v3**: State-of-the-art speech recognition
+- **Llama 3.1 8B Instant**: Fast and accurate translation
+- **Multi-language Support**: Automatic language detection and translation
+- **Timestamp Segmentation**: Precise timing for all transcribed content
+
+### 🛡️ Security & Performance
+- **Rate Limiting**: 10 requests per minute per IP to prevent abuse
+- **Secure File Handling**: Automatic cleanup of temporary files
+- **Input Validation**: Comprehensive validation and sanitization
+- **Error Handling**: User-friendly error messages and recovery
+
+### 📊 User Experience
+- **Real-time Feedback**: Loading states and progress indicators
+- **Export Options**: Download results as formatted text files
+- **Responsive Design**: Works seamlessly on all devices
+- **Intuitive Interface**: Clean, modern UI with Tailwind CSS
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript for type safety
+- **Styling**: Tailwind CSS with custom design system
+- **UI Components**: Shadcn/ui component library
+- **Icons**: Lucide React icon set
+- **AI APIs**:
   - OpenAI Whisper API (transcription)
-  - Groq API (translation)
-- **Language**: TypeScript
+  - Groq API with Llama 3.1 8B Instant (translation)
 
-## Getting Started
+## 🚀 Getting Started
 
-1. Clone the repository
-2. Install dependencies:
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- Groq API key
+
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/anbguye/transcribe-and-translate.git
+cd transcribe-and-translate
+```
+
+2. **Install dependencies**
 ```bash
 npm install
 ```
 
-3. Set up environment variables:
+3. **Set up environment variables**
 ```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` and add your API key:
+```env
 GROQ_API_KEY=your_api_key_here
 ```
 
-4. Run the development server:
+4. **Run the development server**
 ```bash
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. **Open your browser**
+Navigate to [http://localhost:3000](http://localhost:3000)
 
-## Usage
+## 📖 Usage
 
-1. Choose your input method:
-   - Click the upload icon to select an audio file
-   - Click the microphone icon to record audio directly
-2. Wait for the transcription and translation process
-3. View the results with timestamps, original text, and translations
-4. Download the complete results as a text file
+### Recording Audio
+1. **Click the microphone icon** to start recording
+2. **Speak clearly** into your microphone
+3. **Recording automatically stops** after 2 seconds of silence
+4. **Or manually stop** by clicking the stop button anytime
+
+### Uploading Files
+1. **Click the upload icon** to select an audio file
+2. **Choose your audio file** (supports MP3, WAV, M4A, etc.)
+3. **Wait for processing** - transcription and translation happen automatically
+
+### Viewing Results
+- **Real-time updates** show processing status
+- **Timestamped segments** for precise navigation
+- **Original text** and **English translation** side by side
+- **Download button** to save results as a text file
 
 ## Security & Rate Limiting
 
