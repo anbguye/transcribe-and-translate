@@ -7,6 +7,7 @@ import path from "path";
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute in milliseconds
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+const TEMP_DIR = '/tmp';
 
 /**
  * Checks if the client IP is within rate limits
@@ -37,7 +38,7 @@ if (typeof File === 'undefined') {
    * Polyfill for the File API in Node.js environments
    * Provides basic File functionality for server-side file handling with OpenAI SDK
    */
-  (global as any).File = class File {
+  (globalThis as { File: unknown }).File = class File {
     name: string;
     type: string;
     size: number;
@@ -50,7 +51,7 @@ if (typeof File === 'undefined') {
      * @param filename - Name of the file
      * @param options - Additional options like MIME type
      */
-    constructor(parts: any[], filename: string, options: { type?: string } = {}) {
+    constructor(parts: (Buffer | Uint8Array | string)[], filename: string, options: { type?: string } = {}) {
       this.name = filename;
       this.type = options.type || '';
       this.size = parts.reduce((size, part) => size + (Buffer.isBuffer(part) ? part.length : part.length || 0), 0);
@@ -81,6 +82,79 @@ const openai = new OpenAI({
   apiKey: process.env.GROQ_API_KEY || "",
   baseURL: "https://api.groq.com/openai/v1",
 });
+
+/**
+ * Creates a temporary file from buffer and returns the file path
+ * @param buffer - The file buffer to write
+ * @returns The temporary file path
+ */
+function createTempFile(buffer: Buffer): string {
+  const tempFileName = `audio-${Date.now()}.webm`;
+  const tempPath = path.join(TEMP_DIR, tempFileName);
+  fs.writeFileSync(tempPath, buffer);
+  return tempPath;
+}
+
+/**
+ * Cleans up a temporary file
+ * @param tempPath - The path of the temporary file to delete
+ */
+function cleanupTempFile(tempPath: string): void {
+  try {
+    fs.unlinkSync(tempPath);
+  } catch (error) {
+    console.error("Error cleaning up temp file:", error);
+  }
+}
+
+/**
+ * Processes audio transcription and translation
+ * @param tempPath - Path to the temporary audio file
+ * @returns Object containing transcription segments
+ */
+async function processAudioTranscription(tempPath: string) {
+  console.log("Sending transcription request to Whisper");
+
+  const transcription = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(tempPath),
+    model: "whisper-large-v3",
+    response_format: "json"
+  });
+
+  if (!transcription.text) {
+    throw new Error("No text found in transcription");
+  }
+
+  console.log("Received transcription:", transcription);
+
+  // Translate the full text as a single segment
+  const completion = await openai.chat.completions.create({
+    messages: [
+      {
+        role: "user",
+        content:
+          "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text. ",
+      },
+      {
+        role: "user",
+        content: transcription.text,
+      },
+    ],
+    model: "llama-3.1-8b-instant",
+    temperature: 0.3,
+  });
+
+  const segments = [{
+    start: 0,
+    end: 0,
+    originalText: transcription.text,
+    translatedText: completion.choices[0].message.content,
+  }];
+
+  console.log("Translation completed for all segments");
+
+  return { segments };
+}
 
 export async function POST(request: Request) {
   try {
@@ -115,60 +189,17 @@ export async function POST(request: Request) {
       type: file.type,
     });
 
-    // Convert File to Buffer
+    // Convert File to Buffer and create temporary file
     const buffer = Buffer.from(await file.arrayBuffer());
-
-    // Write to temporary file
-    const tempDir = '/tmp';
-    const tempFileName = `audio-${Date.now()}.webm`;
-    const tempPath = path.join(tempDir, tempFileName);
-    fs.writeFileSync(tempPath, buffer);
-
-    console.log("Sending transcription request to Whisper");
+    const tempPath = createTempFile(buffer);
 
     try {
-      const transcription = await openai.audio.transcriptions.create({
-        file: fs.createReadStream(tempPath),
-        model: "whisper-large-v3",
-        response_format: "json"
-      });
-
-      if (!transcription.text) {
-        return NextResponse.json({ error: "No text found in transcription" }, { status: 400 });
-      }
-
-      console.log("Received transcription:", transcription);
-
-      // Translate the full text as a single segment
-      const completion = await openai.chat.completions.create({
-        messages: [
-          {
-            role: "user",
-            content:
-              "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text. ",
-          },
-          {
-            role: "user",
-            content: transcription.text,
-          },
-        ],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.3,
-      });
-
-      const segments = [{
-        start: 0,
-        end: 0,
-        originalText: transcription.text,
-        translatedText: completion.choices[0].message.content,
-      }];
-
-      console.log("Translation completed for all segments");
-
-      return NextResponse.json({ segments });
+      // Process audio transcription and translation
+      const result = await processAudioTranscription(tempPath);
+      return NextResponse.json(result);
     } finally {
       // Clean up temp file
-      fs.unlinkSync(tempPath);
+      cleanupTempFile(tempPath);
     }
   } catch (error) {
     console.error("Error in transcription/translation:", error);

@@ -11,6 +11,9 @@ interface Segment {
   translatedText: string;
 }
 
+const SECONDS_PER_MINUTE = 60;
+const TIME_PADDING = 2;
+
 export default function Home() {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,35 +37,45 @@ export default function Home() {
     handleSubmit(audioFile);
   };
 
+  /**
+   * Transcribes and translates an audio file using the API
+   * @param audioFile - The audio file to process
+   * @returns Promise resolving to transcription segments
+   */
+  const transcribeAudio = async (audioFile: File): Promise<Segment[]> => {
+    const formData = new FormData();
+    formData.append("file", audioFile);
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please wait a minute before trying again.");
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    return data.segments;
+  };
+
   const handleSubmit = async (audioFile: File) => {
     try {
       setIsLoading(true);
       setError("");
       setSegments([]);
 
-      const formData = new FormData();
-      formData.append("file", audioFile);
-
-      const response = await fetch("/api/transcribe", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please wait a minute before trying again.");
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      setSegments(data.segments);
+      const segments = await transcribeAudio(audioFile);
+      setSegments(segments);
     } catch (err) {
       console.error("Error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -72,9 +85,6 @@ export default function Home() {
   };
 
   const formatTime = (seconds: number): string => {
-    const SECONDS_PER_MINUTE = 60;
-    const TIME_PADDING = 2;
-
     const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
     const remainingSeconds = Math.floor(seconds % SECONDS_PER_MINUTE);
     return `${minutes}:${remainingSeconds.toString().padStart(TIME_PADDING, "0")}`;
