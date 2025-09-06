@@ -1,5 +1,34 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
+
+// Polyfill File for Node.js
+if (typeof File === 'undefined') {
+  (global as any).File = class File {
+    name: string;
+    type: string;
+    size: number;
+    lastModified: number;
+    _buffer: Buffer;
+
+    constructor(parts: any[], filename: string, options: { type?: string } = {}) {
+      this.name = filename;
+      this.type = options.type || '';
+      this.size = parts.reduce((size, part) => size + (Buffer.isBuffer(part) ? part.length : part.length || 0), 0);
+      this.lastModified = Date.now();
+      this._buffer = Buffer.concat(parts.map(p => Buffer.isBuffer(p) ? p : Buffer.from(p)));
+    }
+
+    arrayBuffer() {
+      return Promise.resolve(this._buffer.buffer as ArrayBuffer);
+    }
+
+    text() {
+      return Promise.resolve(this._buffer.toString());
+    }
+  };
+}
 
 // Initialize OpenAI client with Groq's base URL
 const openai = new OpenAI({
@@ -30,54 +59,58 @@ export async function POST(request: Request) {
     // Convert File to Buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Create a Blob from the buffer
-    const blob = new Blob([buffer], { type: file.type });
+    // Write to temporary file
+    const tempDir = '/tmp';
+    const tempFileName = `audio-${Date.now()}.webm`;
+    const tempPath = path.join(tempDir, tempFileName);
+    fs.writeFileSync(tempPath, buffer);
 
     console.log("Sending transcription request to Whisper");
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: new File([blob], "audio.mp3", { type: file.type }),
-      model: "whisper-large-v3",
-      response_format: "verbose_json"
-    });
+    try {
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(tempPath),
+        model: "whisper-large-v3",
+        response_format: "json"
+      });
 
-    if (!transcription.segments) {
-      return NextResponse.json({ error: "No segments found in transcription" }, { status: 400 });
+      if (!transcription.text) {
+        return NextResponse.json({ error: "No text found in transcription" }, { status: 400 });
+      }
+
+      console.log("Received transcription:", transcription);
+
+      // Translate the full text as a single segment
+      const completion = await openai.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content:
+              "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text. ",
+          },
+          {
+            role: "user",
+            content: transcription.text,
+          },
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.3,
+      });
+
+      const segments = [{
+        start: 0,
+        end: 0,
+        originalText: transcription.text,
+        translatedText: completion.choices[0].message.content,
+      }];
+
+      console.log("Translation completed for all segments");
+
+      return NextResponse.json({ segments });
+    } finally {
+      // Clean up temp file
+      fs.unlinkSync(tempPath);
     }
-
-    console.log("Received transcription:", transcription);
-
-    // Translate each segment
-    const segments = await Promise.all(
-      transcription.segments.map(async (segment) => {
-        const completion = await openai.chat.completions.create({
-          messages: [
-            {
-              role: "user",
-              content:
-                "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. Dont mention anything about the language of the text. Just return the translated text. ",
-            },
-            {
-              role: "user",
-              content: segment.text,
-            },
-          ],
-          model: "mixtral-8x7b-32768",
-          temperature: 0.3,
-        });
-
-        return {
-          start: segment.start,
-          end: segment.end,
-          originalText: segment.text,
-          translatedText: completion.choices[0].message.content,
-        };
-      })
-    );
-
-    console.log("Translation completed for all segments");
-
-    return NextResponse.json({ segments });
   } catch (error) {
     console.error("Error in transcription/translation:", error);
     return NextResponse.json(
