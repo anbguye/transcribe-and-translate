@@ -8,8 +8,6 @@ interface AudioRecorderProps {
   isProcessing: boolean;
 }
 
-const AUTO_STOP_DELAY = 2000; // 2 seconds
-const COUNTDOWN_INTERVAL = 1000; // 1 second
 const SILENCE_THRESHOLD = 1; // Audio level threshold for silence detection
 const SILENCE_DURATION = 2000; // 2 seconds of silence before auto-stop
 const AUDIO_CHECK_INTERVAL = 100; // Check audio levels every 100ms
@@ -75,7 +73,13 @@ export default function AudioRecorder({ onRecordingComplete, isProcessing }: Aud
    */
   const setupAudioMonitoring = async (stream: MediaStream) => {
     try {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // Create audio context with proper typing
+      const AudioContextClass = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error('Web Audio API not supported');
+      }
+
+      audioContextRef.current = new AudioContextClass();
 
       // Resume audio context if needed (required in some browsers)
       if (audioContextRef.current.state === 'suspended') {
@@ -91,15 +95,13 @@ export default function AudioRecorder({ onRecordingComplete, isProcessing }: Aud
       analyserRef.current.maxDecibels = -10;
       source.connect(analyserRef.current);
 
-
-
       // Start monitoring audio levels
       const monitorInterval = setInterval(() => {
         monitorAudioLevels();
       }, AUDIO_CHECK_INTERVAL);
 
-      // Store interval for cleanup
-      (analyserRef.current as any).monitorInterval = monitorInterval;
+      // Store interval for cleanup using a type-safe approach
+      (analyserRef.current as AnalyserNode & { monitorInterval?: NodeJS.Timeout }).monitorInterval = monitorInterval;
     } catch (error) {
       console.warn('Web Audio API setup failed:', error);
     }
@@ -114,8 +116,8 @@ export default function AudioRecorder({ onRecordingComplete, isProcessing }: Aud
       silenceTimeoutRef.current = null;
     }
 
-    if (analyserRef.current && (analyserRef.current as any).monitorInterval) {
-      clearInterval((analyserRef.current as any).monitorInterval);
+    if (analyserRef.current && (analyserRef.current as AnalyserNode & { monitorInterval?: NodeJS.Timeout }).monitorInterval) {
+      clearInterval((analyserRef.current as AnalyserNode & { monitorInterval?: NodeJS.Timeout }).monitorInterval);
     }
 
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -190,9 +192,10 @@ export default function AudioRecorder({ onRecordingComplete, isProcessing }: Aud
 
   // Cleanup timeout on unmount
   useEffect(() => {
+    const currentTimeout = stopTimeoutRef.current;
     return () => {
-      if (stopTimeoutRef.current) {
-        clearTimeout(stopTimeoutRef.current);
+      if (currentTimeout) {
+        clearTimeout(currentTimeout);
       }
     };
   }, []);
