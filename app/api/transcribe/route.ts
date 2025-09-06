@@ -8,8 +8,7 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute in milliseconds
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
 const TEMP_DIR = '/tmp';
-const MIN_SPEECH_LENGTH = 3; // Minimum characters for valid speech
-const NO_SPEECH_MESSAGE = "[No speech detected - please try recording again]";
+
 
 /**
  * Checks if the client IP is within rate limits
@@ -109,35 +108,7 @@ function cleanupTempFile(tempPath: string): void {
   }
 }
 
-/**
- * Determines if the transcribed text contains meaningful speech or is just noise
- * @param text - The transcribed text to analyze
- * @returns true if the text appears to be noise/garbage, false if it contains speech
- */
-function isNoiseOrSilence(text: string): boolean {
-  const cleanText = text.trim();
 
-  // Check for empty or very short text
-  if (!cleanText || cleanText.length < MIN_SPEECH_LENGTH) {
-    return true;
-  }
-
-  // Check if text contains no letters (just symbols/numbers)
-  if (/^[^a-zA-Z]*$/.test(cleanText)) {
-    return true;
-  }
-
-  // Check if text lacks common words (indicating it might be noise)
-  const lowerText = cleanText.toLowerCase();
-  const hasCommonWords = lowerText.includes('thank you') ||
-                        lowerText.includes('you') ||
-                        lowerText.includes('the') ||
-                        lowerText.includes('and') ||
-                        lowerText.includes('is') ||
-                        lowerText.includes('it');
-
-  return !hasCommonWords;
-}
 
 /**
  * Processes audio transcription and translation
@@ -159,27 +130,21 @@ async function processAudioTranscription(tempPath: string) {
 
   console.log("Received transcription:", transcription);
 
-  // Check if transcription contains meaningful content
-  const cleanText = transcription.text.trim();
-
-  // Use the dedicated function to determine if this is noise/silence
-  const finalText = isNoiseOrSilence(cleanText) ? NO_SPEECH_MESSAGE : cleanText;
-
-  // Translate the text if it contains meaningful content
+  // Translate the transcription to English
   const completion = await openai.chat.completions.create({
     messages: [
       {
         role: "user",
         content:
-          "You are a translator. Analyze the following text and determine if it contains meaningful speech content or if it's just noise/garbage. If the text appears to be noise, random sounds, or non-speech audio, return exactly: '[No speech detected]'. If it contains actual speech, translate it to English if it's not already in English. Return only the translation or the no-speech message - no additional comments or explanations.",
+          "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. If the text is gibberish or does not contain any meaningful speech, you MUST respond with: [No speech detected - please try recording again].",
       },
       {
         role: "user",
-        content: finalText,
+        content: transcription.text,
       },
     ],
     model: "llama-3.1-8b-instant",
-    temperature: 0.1, // Lower temperature for more consistent responses
+    temperature: 0.3,
   });
 
   const segments = [{
