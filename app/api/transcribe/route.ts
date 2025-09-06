@@ -3,8 +3,40 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
+// Simple in-memory rate limiter
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute in milliseconds
+const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+
+/**
+ * Checks if the client IP is within rate limits
+ * @param clientIP - The client's IP address
+ * @returns true if request is allowed, false if rate limited
+ */
+function checkRateLimit(clientIP: string): boolean {
+  const now = Date.now();
+  const clientData = rateLimitMap.get(clientIP);
+
+  if (!clientData || now > clientData.resetTime) {
+    // Reset or initialize rate limit data
+    rateLimitMap.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+
+  clientData.count++;
+  return true;
+}
+
 // Polyfill File for Node.js
 if (typeof File === 'undefined') {
+  /**
+   * Polyfill for the File API in Node.js environments
+   * Provides basic File functionality for server-side file handling with OpenAI SDK
+   */
   (global as any).File = class File {
     name: string;
     type: string;
@@ -12,6 +44,12 @@ if (typeof File === 'undefined') {
     lastModified: number;
     _buffer: Buffer;
 
+    /**
+     * Creates a new File instance from buffer parts
+     * @param parts - Array of Buffer or other data parts
+     * @param filename - Name of the file
+     * @param options - Additional options like MIME type
+     */
     constructor(parts: any[], filename: string, options: { type?: string } = {}) {
       this.name = filename;
       this.type = options.type || '';
@@ -20,10 +58,18 @@ if (typeof File === 'undefined') {
       this._buffer = Buffer.concat(parts.map(p => Buffer.isBuffer(p) ? p : Buffer.from(p)));
     }
 
+    /**
+     * Returns the file contents as an ArrayBuffer
+     * @returns Promise resolving to ArrayBuffer
+     */
     arrayBuffer() {
       return Promise.resolve(this._buffer.buffer as ArrayBuffer);
     }
 
+    /**
+     * Returns the file contents as a string
+     * @returns Promise resolving to string
+     */
     text() {
       return Promise.resolve(this._buffer.toString());
     }
@@ -38,6 +84,19 @@ const openai = new OpenAI({
 
 export async function POST(request: Request) {
   try {
+    // Get client IP for rate limiting
+    const clientIP = request.headers.get('x-forwarded-for') ||
+                     request.headers.get('x-real-ip') ||
+                     'unknown';
+
+    // Check rate limit
+    if (!checkRateLimit(clientIP)) {
+      return NextResponse.json(
+        { error: "Rate limit exceeded. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     // Log the incoming request
     console.log("Received transcription request");
 

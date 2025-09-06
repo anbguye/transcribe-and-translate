@@ -48,6 +48,10 @@ export default function Home() {
         body: formData,
       });
 
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please wait a minute before trying again.");
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -68,9 +72,12 @@ export default function Home() {
   };
 
   const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+    const SECONDS_PER_MINUTE = 60;
+    const TIME_PADDING = 2;
+
+    const minutes = Math.floor(seconds / SECONDS_PER_MINUTE);
+    const remainingSeconds = Math.floor(seconds % SECONDS_PER_MINUTE);
+    return `${minutes}:${remainingSeconds.toString().padStart(TIME_PADDING, "0")}`;
   };
 
   const handleDownload = () => {
