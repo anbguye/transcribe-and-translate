@@ -19,6 +19,7 @@ A modern, secure web application that transcribes audio files and translates non
 - **Whisper Large v3**: State-of-the-art speech recognition
 - **Llama 3.1 8B Instant**: Fast and accurate translation
 - **Multi-language Support**: Automatic language detection and translation
+- **Target Language Selection**: Choose from 25+ languages for translation output
 - **Timestamp Segmentation**: Precise timing for all transcribed content
 
 ### 🛡️ Security & Performance
@@ -126,7 +127,6 @@ Handles audio file transcription and translation:
 - [ ] Add multiple output formats (SRT, VTT, JSON, DOCX export options)
 - [ ] Create progress tracking system with real-time updates and ETA
 - [ ] Build transcription history dashboard with search and organization
-- [ ] Add target language selection dropdown (20+ languages)
 
 ### Phase 2: Advanced Features (Medium Priority)
 - [ ] Implement real-time streaming transcription during recording

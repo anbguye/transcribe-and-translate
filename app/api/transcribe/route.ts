@@ -2,30 +2,35 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import {
+  isValidLanguageCode,
+  getLanguageName,
+  API_RATE_LIMIT_MAX_REQUESTS,
+  API_RATE_LIMIT_WINDOW_MS,
+  isValidAudioFile
+} from "@/lib/constants";
 
 // Simple in-memory rate limiter
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute in milliseconds
-const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
 const TEMP_DIR = '/tmp';
 
 
 /**
- * Checks if the client IP is within rate limits
+ * Validates if the client IP address is within allowed rate limits
  * @param clientIP - The client's IP address
  * @returns true if request is allowed, false if rate limited
  */
-function checkRateLimit(clientIP: string): boolean {
+function validateClientRateLimit(clientIP: string): boolean {
   const now = Date.now();
   const clientData = rateLimitMap.get(clientIP);
 
   if (!clientData || now > clientData.resetTime) {
     // Reset or initialize rate limit data
-    rateLimitMap.set(clientIP, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    rateLimitMap.set(clientIP, { count: 1, resetTime: now + API_RATE_LIMIT_WINDOW_MS });
     return true;
   }
 
-  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+  if (clientData.count >= API_RATE_LIMIT_MAX_REQUESTS) {
     return false;
   }
 
@@ -113,9 +118,10 @@ function cleanupTempFile(tempPath: string): void {
 /**
  * Processes audio transcription and translation
  * @param tempPath - Path to the temporary audio file
+ * @param targetLanguage - Target language code for translation
  * @returns Object containing transcription segments
  */
-async function processAudioTranscription(tempPath: string) {
+async function processAudioTranscription(tempPath: string, targetLanguage: string = "en") {
   console.log("Sending transcription request to Whisper");
 
   const transcription = await openai.audio.transcriptions.create({
@@ -130,13 +136,16 @@ async function processAudioTranscription(tempPath: string) {
 
   console.log("Received transcription:", transcription);
 
-  // Translate the transcription to English
+  // Get target language name for the prompt
+  const targetLanguageName = getLanguageName(targetLanguage);
+
+  // Translate the transcription to the target language
   const completion = await openai.chat.completions.create({
     messages: [
       {
         role: "user",
         content:
-          "You are a translator. Translate the following text to English if it's not already in English. If it's already in English, return it as is. Just return the translated text without any additional comments. If the text is gibberish or does not contain any meaningful speech, you MUST respond with: [No speech detected - please try recording again].",
+          `You are a translator. Translate the following text to ${targetLanguageName} if it's not already in ${targetLanguageName}. If it's already in ${targetLanguageName}, return it as is. Just return the translated text without any additional comments. If the text is gibberish or does not contain any meaningful speech, you MUST respond with: [No speech detected - please try recording again].`,
       },
       {
         role: "user",
@@ -167,7 +176,7 @@ export async function POST(request: Request) {
                      'unknown';
 
     // Check rate limit
-    if (!checkRateLimit(clientIP)) {
+    if (!validateClientRateLimit(clientIP)) {
       return NextResponse.json(
         { error: "Rate limit exceeded. Please try again later." },
         { status: 429 }
@@ -179,10 +188,27 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
+    const targetLanguage = (formData.get("targetLanguage") as string) || "en";
+
+    // Validate target language
+    if (!isValidLanguageCode(targetLanguage)) {
+      console.log("Invalid target language:", targetLanguage);
+      return NextResponse.json({ error: "Invalid target language" }, { status: 400 });
+    }
 
     if (!file) {
       console.log("No file provided");
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    // Validate file type and size
+    if (!isValidAudioFile(file)) {
+      console.log("Invalid file type or size:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+      return NextResponse.json({ error: "Invalid file type or file too large" }, { status: 400 });
     }
 
     // Log file details
@@ -198,7 +224,7 @@ export async function POST(request: Request) {
 
     try {
       // Process audio transcription and translation
-      const result = await processAudioTranscription(tempPath);
+      const result = await processAudioTranscription(tempPath, targetLanguage);
       return NextResponse.json(result);
     } finally {
       // Clean up temp file

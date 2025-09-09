@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import { Loader2, Download, Upload } from "lucide-react";
 import AudioRecorder from "./components/AudioRecorder";
+import LanguageSelector from "./components/LanguageSelector";
+import { SUPPORTED_LANGUAGES } from "@/lib/constants";
 
 interface Segment {
   start: number;
@@ -19,6 +21,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,6 +49,7 @@ export default function Home() {
   const transcribeAudio = async (audioFile: File): Promise<Segment[]> => {
     const formData = new FormData();
     formData.append("file", audioFile);
+    formData.append("targetLanguage", selectedLanguage);
 
     const response = await fetch("/api/transcribe", {
       method: "POST",
@@ -92,12 +96,13 @@ export default function Home() {
   };
 
   const handleDownload = () => {
+    const targetLangName = selectedLang ? selectedLang.name : "English";
     const content = segments
       .map(
         (segment) =>
           `[${formatTime(segment.start)} - ${formatTime(segment.end)}]\n` +
           `Original: ${segment.originalText}\n` +
-          `English: ${segment.translatedText}\n\n`
+          `${targetLangName}: ${segment.translatedText}\n\n`
       )
       .join("");
 
@@ -112,11 +117,21 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const selectedLang = SUPPORTED_LANGUAGES.find(lang => lang.code === selectedLanguage);
+
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
       <h1 className="text-2xl font-bold mb-8">
         Audio Transcription & Translation
       </h1>
+
+      <div className="w-full max-w-md mb-8">
+        <LanguageSelector
+          selectedLanguage={selectedLanguage}
+          onLanguageChange={setSelectedLanguage}
+          disabled={isLoading || isRecording}
+        />
+      </div>
 
       <div className="w-full max-w-md">
         <div className="flex justify-center items-end space-x-8 mb-8">
@@ -173,6 +188,7 @@ export default function Home() {
                 </div>
                 <p className="text-sm mb-2">{segment.originalText}</p>
                 <p className="text-sm text-gray-600">
+                  <span className="font-medium">{selectedLang ? selectedLang.name : "English"}: </span>
                   {segment.translatedText}
                 </p>
               </div>
